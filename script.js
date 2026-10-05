@@ -109,7 +109,7 @@
    
      const amountEl = document.createElement('div');
      amountEl.className = 'tx-amount ' + (transaction.amount > 0 ? 'plus' : 'minus');
-     amountEl.textContent = (transaction.amount > 0 ? '+$' : '-$') + Math.abs(transaction.amount).toFixed(2);
+     amountEl.textContent = (transaction.amount > 0 ? '+₹' : '-₹') + Math.abs(transaction.amount).toFixed(2);
    
      const deleteBtn = document.createElement('button');
      deleteBtn.className = 'delete-btn';
@@ -144,9 +144,9 @@
      const income = amounts.filter(x => x > 0).reduce((a, b) => a + b, 0);
      const expense = Math.abs(amounts.filter(x => x < 0).reduce((a, b) => a + b, 0));
    
-     balance.innerText = `$${total.toFixed(2)}`;
-     incomeAmount.innerText = `+$${income.toFixed(2)}`;
-     expenseAmount.innerText = `-$${expense.toFixed(2)}`;
+     balance.innerText = total < 0 ? `-₹${Math.abs(total).toFixed(2)}` : `₹${total.toFixed(2)}`;
+     incomeAmount.innerText = `+₹${income.toFixed(2)}`;
+     expenseAmount.innerText = `-₹${expense.toFixed(2)}`;
    }
    
    /* ---------------------------
@@ -295,7 +295,7 @@
        row.className = 'month-row';
        row.innerHTML = `
          <div class="label">${k}</div>
-         <div class="values">Income: $${summary[k].income.toFixed(2)} &nbsp; • &nbsp; Expense: $${summary[k].expense.toFixed(2)}</div>
+         <div class="values">Income: ₹${summary[k].income.toFixed(2)} &nbsp; • &nbsp; Expense: ₹${summary[k].expense.toFixed(2)}</div>
        `;
        monthlySummaryContainer.appendChild(row);
      });

@@ -1,369 +1,219 @@
-/* ---------------------------
-   DOM elements
-   --------------------------- */
-   const balance = document.getElementById('balance');
-   const incomeAmount = document.getElementById('income-amount');
-   const expenseAmount = document.getElementById('expense-amount');
-   const transactionList = document.getElementById('transaction-list');
-   const historyTitle = document.getElementById('history-title');
-   const noTransPlaceholder = document.getElementById('no-trans-placeholder');
-   
-   const form = document.getElementById('transaction-form');
-   const text = document.getElementById('text');
-   const amount = document.getElementById('amount');
-   const dateInput = document.getElementById('date');
-   const categoryInput = document.getElementById('category');
-   const typeInputs = document.getElementsByName('type');
-   const errorMessage = document.getElementById('error-message');
-   
-   const filterCategory = document.getElementById('filter-category');
-   const startDate = document.getElementById('start-date');
-   const endDate = document.getElementById('end-date');
-   const applyFilterBtn = document.getElementById('apply-filter');
-   const clearFilterBtn = document.getElementById('clear-filter');
-   
-   const exportBtn = document.getElementById('export-btn');
-   const resetBtn = document.getElementById('reset-btn');
-   
-   const monthlySummaryContainer = document.getElementById('monthly-summary');
-   
-   /* ---------------------------
-      Data: load from localStorage
-      --------------------------- */
-   const STORAGE_KEY = 'transactions_v1';
-   let transactions = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-   
-   /* ---------------------------
-      Utility helpers
-      --------------------------- */
-   function generateID() {
-     return Date.now() + Math.floor(Math.random() * 1000);
-   }
-   
-   function saveToStorage() {
-     localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-   }
-   
-   /* Format date to YYYY-MM-DD for inputs and ISO display */
-   function formatDateISO(d) {
-     const dt = new Date(d);
-     const y = dt.getFullYear();
-     const m = String(dt.getMonth() + 1).padStart(2, '0');
-     const day = String(dt.getDate()).padStart(2, '0');
-     return `${y}-${m}-${day}`;
-   }
-   
-   /* Nice readable date */
-   function formatDateReadable(d) {
-     const dt = new Date(d);
-     return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-   }
-   
-   /* Show inline error message (auto hides) */
-   function showError(msg, time = 3000) {
-     errorMessage.textContent = msg;
-     errorMessage.style.display = 'block';
-     setTimeout(() => { errorMessage.style.display = 'none'; }, time);
-   }
-   
-   /* Toggle history visibility */
-   function toggleHistoryVisibility() {
-     if (transactions.length === 0) {
-       historyTitle.style.display = 'none';
-       noTransPlaceholder.style.display = 'block';
-     } else {
-       historyTitle.style.display = 'block';
-       noTransPlaceholder.style.display = 'none';
-     }
-   }
-   
-   /* ---------------------------
-      Render functions
-      --------------------------- */
-   
-   /* Render single transaction into list */
-   function addTransactionDOM(transaction) {
-     const li = document.createElement('li');
-   
-     const left = document.createElement('div');
-     left.className = 'item-left';
-   
-     const badge = document.createElement('div');
-     badge.className = 'badge';
-     badge.textContent = transaction.category || 'Other';
-   
-     const nameCol = document.createElement('div');
-     const nameEl = document.createElement('div');
-     nameEl.className = 'tx-name';
-     nameEl.textContent = transaction.name;
-   
-     const metaEl = document.createElement('div');
-     metaEl.className = 'tx-meta';
-     metaEl.textContent = `${formatDateReadable(transaction.date)} • ${transaction.type}`;
-   
-     nameCol.appendChild(nameEl);
-     nameCol.appendChild(metaEl);
-   
-     left.appendChild(badge);
-     left.appendChild(nameCol);
-   
-     const amountEl = document.createElement('div');
-     amountEl.className = 'tx-amount ' + (transaction.amount > 0 ? 'plus' : 'minus');
-     amountEl.textContent = (transaction.amount > 0 ? '+₹' : '-₹') + Math.abs(transaction.amount).toFixed(2);
-   
-     const deleteBtn = document.createElement('button');
-     deleteBtn.className = 'delete-btn';
-     deleteBtn.title = 'Delete transaction';
-     deleteBtn.innerHTML = '✕';
-     deleteBtn.addEventListener('click', () => removeTransaction(transaction.id));
-   
-     li.appendChild(left);
-     li.appendChild(amountEl);
-     li.appendChild(deleteBtn);
-   
-     li.classList.add(transaction.amount > 0 ? 'income' : 'expense');
-   
-     transactionList.appendChild(li);
-   }
-   
-   /* Render entire transactions list (optionally pass list to render filtered results) */
-   function renderTransactions(list = transactions) {
-     transactionList.innerHTML = '';
-     if (list.length === 0) {
-       toggleHistoryVisibility();
-       return;
-     }
-     list.forEach(addTransactionDOM);
-     toggleHistoryVisibility();
-   }
-   
-   /* Update totals: balance, income, expense */
-   function updateTotals(list = transactions) {
-     const amounts = list.map(t => t.amount);
-     const total = amounts.reduce((acc, x) => acc + x, 0);
-     const income = amounts.filter(x => x > 0).reduce((a, b) => a + b, 0);
-     const expense = Math.abs(amounts.filter(x => x < 0).reduce((a, b) => a + b, 0));
-   
-     balance.innerText = total < 0 ? `-₹${Math.abs(total).toFixed(2)}` : `₹${total.toFixed(2)}`;
-     incomeAmount.innerText = `+₹${income.toFixed(2)}`;
-     expenseAmount.innerText = `-₹${expense.toFixed(2)}`;
-   }
-   
-   /* ---------------------------
-      CRUD operations
-      --------------------------- */
-   
-   /* Add transaction (form submit) */
-   function addTransaction(e) {
-     e.preventDefault();
-   
-     const name = text.value.trim();
-     const amtRaw = amount.value;
-     const amt = Number(amtRaw);
-     const category = categoryInput.value || 'Other';
-     const type = [...typeInputs].find(i => i.checked).value;
-     const dateVal = dateInput.value || formatDateISO(new Date());
-   
-     // Basic validation
-     if (!name) { showError('Please enter a transaction name.'); return; }
-     if (!amtRaw || isNaN(amt) || amt === 0) { showError('Please enter a non-zero numeric amount.'); return; }
-   
-     const finalAmount = type === 'expense' ? -Math.abs(amt) : Math.abs(amt);
-   
-     const transaction = {
-       id: generateID(),
-       name,
-       amount: finalAmount,
-       type,
-       date: dateVal,
-       category
-     };
-   
-     transactions.push(transaction);
-     saveToStorage();
-     renderTransactions();
-     updateTotals();
-     updateMonthlySummary();
-   
-     // Reset form
-     text.value = '';
-     amount.value = '';
-     dateInput.value = '';
-     categoryInput.value = 'Salary';
-     typeInputs[0].checked = true;
-   }
-   
-   /* Remove transaction by id */
-   function removeTransaction(id) {
-     transactions = transactions.filter(t => t.id !== id);
-     saveToStorage();
-     renderTransactions();
-     updateTotals();
-     updateMonthlySummary();
-   }
-   
-   /* Reset all (clear storage, reload state) */
-   function resetAll() {
-     if (!confirm('Are you sure you want to reset all transactions? This cannot be undone.')) return;
-     transactions = [];
-     saveToStorage();
-     renderTransactions();
-     updateTotals();
-     updateMonthlySummary();
-   }
-   
-   /* ---------------------------
-      Filters
-      --------------------------- */
-   
-   /* Apply category and date filters: returns filtered array */
-   function getFilteredTransactions() {
-     const cat = filterCategory.value;
-     const s = startDate.value ? new Date(startDate.value) : null;
-     const e = endDate.value ? new Date(endDate.value) : null;
-   
-     return transactions.filter(t => {
-       const matchCat = (cat === 'all') ? true : (t.category === cat);
-       const txDate = new Date(t.date);
-       const matchDate = (() => {
-         if (s && e) {
-           // include inclusive range
-           return txDate >= s && txDate <= e;
-         } else if (s) {
-           return txDate >= s;
-         } else if (e) {
-           return txDate <= e;
-         }
-         return true;
-       })();
-       return matchCat && matchDate;
-     });
-   }
-   
-   /* Apply filter button */
-   function applyFilters() {
-     const filtered = getFilteredTransactions();
-     renderTransactions(filtered);
-     updateTotals(filtered);
-   }
-   
-   /* Clear filters */
-   function clearFilters() {
-     filterCategory.value = 'all';
-     startDate.value = '';
-     endDate.value = '';
-     renderTransactions();
-     updateTotals();
-   }
-   
-   /* ---------------------------
-      Monthly summary
-      --------------------------- */
-   
-   /* Generate monthly summary object */
-   function getMonthlySummary() {
-     // group by "Month Year" e.g., "Oct 2025"
-     const map = {};
-     transactions.forEach(t => {
-       const dt = new Date(t.date);
-       const key = dt.toLocaleString(undefined, { month: 'short', year: 'numeric' });
-       if (!map[key]) map[key] = { income: 0, expense: 0 };
-       if (t.amount > 0) map[key].income += t.amount;
-       else map[key].expense += Math.abs(t.amount);
-     });
-     return map;
-   }
-   
-   /* Render monthly summary */
-   function updateMonthlySummary() {
-     const summary = getMonthlySummary();
-     monthlySummaryContainer.innerHTML = '';
-     const keys = Object.keys(summary).sort((a, b) => {
-       // sort by date descending (most recent first)
-       const ad = new Date(a.split(' ')[1], new Date(Date.parse(a.split(' ')[0] + " 1")).getMonth());
-       const bd = new Date(b.split(' ')[1], new Date(Date.parse(b.split(' ')[0] + " 1")).getMonth());
-       return bd - ad;
-     });
-   
-     if (keys.length === 0) {
-       monthlySummaryContainer.innerHTML = '<p class="muted">No monthly data yet.</p>';
-       return;
-     }
-   
-     keys.forEach(k => {
-       const row = document.createElement('div');
-       row.className = 'month-row';
-       row.innerHTML = `
-         <div class="label">${k}</div>
-         <div class="values">Income: ₹${summary[k].income.toFixed(2)} &nbsp; • &nbsp; Expense: ₹${summary[k].expense.toFixed(2)}</div>
-       `;
-       monthlySummaryContainer.appendChild(row);
-     });
-   }
-   
-   /* ---------------------------
-      Export CSV
-      --------------------------- */
-   function exportToCSV() {
-     if (transactions.length === 0) { showError('No transactions to export.'); return; }
-   
-     const headers = ['Name', 'Amount', 'Type', 'Date', 'Category'];
-     const rows = transactions.map(t => [
-       `"${t.name.replace(/"/g, '""')}"`,
-       t.amount,
-       t.type,
-       t.date,
-       t.category
-     ].join(','));
-   
-     const csvContent = [headers.join(','), ...rows].join('\n');
-   
-     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-     const today = formatDateISO(new Date());
-     const filename = `transactions_${today}.csv`;
-     if (navigator.msSaveBlob) { // IE 10+
-       navigator.msSaveBlob(blob, filename);
-     } else {
-       const link = document.createElement('a');
-       const url = URL.createObjectURL(blob);
-       link.setAttribute('href', url);
-       link.setAttribute('download', filename);
-       link.style.visibility = 'hidden';
-       document.body.appendChild(link);
-       link.click();
-       document.body.removeChild(link);
-     }
-   }
-   
-   /* ---------------------------
-      Initialization
-      --------------------------- */
-   
-   function initApp() {
-     // Render existing transactions on start
-     renderTransactions();
-     updateTotals();
-     updateMonthlySummary();
-   
-     // Pre-fill date input with today's date as placeholder (not mandatory)
-     dateInput.placeholder = formatDateISO(new Date());
-   
-     // If storage empty, show placeholder
-     toggleHistoryVisibility();
-   }
-   
-   /* ---------------------------
-      Event listeners
-      --------------------------- */
-   form.addEventListener('submit', addTransaction);
-   applyFilterBtn.addEventListener('click', applyFilters);
-   clearFilterBtn.addEventListener('click', clearFilters);
-   exportBtn.addEventListener('click', exportToCSV);
-   resetBtn.addEventListener('click', resetAll);
-   
-   /* Initialize app on load */
-   initApp();
-   
-   /* make removeTransaction accessible to any inline usage (if any) */
-   window.removeTransaction = removeTransaction;
-   
+/* DOM Elements */
+const balance = document.getElementById('balance');
+const incomeAmount = document.getElementById('income-amount');
+const expenseAmount = document.getElementById('expense-amount');
+const transactionList = document.getElementById('transaction-list');
+
+const form = document.getElementById('transaction-form');
+const textInput = document.getElementById('text');
+const amountInput = document.getElementById('amount');
+const categoryInput = document.getElementById('category');
+const typeInput = document.getElementById('transaction-type');
+const toggleBtns = document.querySelectorAll('.toggle-btn');
+const errorMessage = document.getElementById('error-message');
+const exportBtn = document.getElementById('export-btn');
+
+/* Storage Key */
+const STORAGE_KEY = 'expense_tracker_transactions_v2';
+
+/* Default Initial Data (Matches Prompt Image) */
+const DEFAULT_TRANSACTIONS = [
+  { id: '1', name: 'Monthly Salary', category: 'Salary', date: '2026-10-06', amount: 25000, type: 'income' },
+  { id: '2', name: 'Groceries', category: 'Groceries', date: '2026-10-05', amount: -2400, type: 'expense' },
+  { id: '3', name: 'Bus Pass', category: 'Transport', date: '2026-10-03', amount: -1200, type: 'expense' },
+  { id: '4', name: 'Electricity Bill', category: 'Bills', date: '2026-10-01', amount: -2950, type: 'expense' }
+];
+
+/* Load Transactions from LocalStorage or use defaults */
+let storedData = localStorage.getItem(STORAGE_KEY);
+let transactions = storedData ? JSON.parse(storedData) : DEFAULT_TRANSACTIONS;
+
+/* Helper: Save to Storage */
+function saveToStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+}
+
+/* Helper: Format Date for Display (e.g., 06 Oct 2026) */
+function formatDateTable(dateStr) {
+  if (!dateStr) return '';
+  const dt = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`);
+  if (isNaN(dt.getTime())) return dateStr;
+  
+  const day = String(dt.getDate()).padStart(2, '0');
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = monthNames[dt.getMonth()];
+  const year = dt.getFullYear();
+  return `${day} ${month} ${year}`;
+}
+
+/* Helper: Format ISO Date (YYYY-MM-DD) */
+function getTodayISO() {
+  const dt = new Date();
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const d = String(dt.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/* Helper: Format Currency */
+function formatCurrency(val, includeDecimal = true) {
+  const absVal = Math.abs(val);
+  const formatted = absVal.toLocaleString('en-IN', {
+    minimumFractionDigits: includeDecimal ? 2 : 0,
+    maximumFractionDigits: includeDecimal ? 2 : 0
+  });
+  return formatted;
+}
+
+/* Render Totals */
+function updateTotals() {
+  const amounts = transactions.map(t => t.amount);
+  const total = amounts.reduce((acc, item) => acc + item, 0);
+  const income = amounts.filter(item => item > 0).reduce((acc, item) => acc + item, 0);
+  const expense = Math.abs(amounts.filter(item => item < 0).reduce((acc, item) => acc + item, 0));
+
+  balance.textContent = `₹${formatCurrency(total, true)}`;
+  incomeAmount.textContent = `+₹${formatCurrency(income, true)}`;
+  expenseAmount.textContent = `–₹${formatCurrency(expense, true)}`;
+}
+
+/* Render History Table */
+function renderTransactions() {
+  transactionList.innerHTML = '';
+
+  if (transactions.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px 0;">No transactions found.</td>`;
+    transactionList.appendChild(tr);
+    return;
+  }
+
+  transactions.forEach(t => {
+    const tr = document.createElement('tr');
+
+    const isIncome = t.amount > 0;
+    const amountFormatted = isIncome
+      ? `+₹${formatCurrency(t.amount, false)}`
+      : `–₹${formatCurrency(Math.abs(t.amount), false)}`;
+
+    const amountClass = isIncome ? 'plus' : 'minus';
+
+    tr.innerHTML = `
+      <td class="transaction-name">${t.name}</td>
+      <td class="category">${t.category || 'Other'}</td>
+      <td class="date">${formatDateTable(t.date)}</td>
+      <td class="amount ${amountClass}">
+        ${amountFormatted}
+        <button class="delete-row-btn" onclick="removeTransaction('${t.id}')" title="Delete">✕</button>
+      </td>
+    `;
+
+    transactionList.appendChild(tr);
+  });
+}
+
+/* Add Transaction handler */
+function addTransaction(e) {
+  e.preventDefault();
+
+  const name = textInput.value.trim();
+  const amtValue = parseFloat(amountInput.value);
+  const category = categoryInput.value;
+  const type = typeInput.value;
+
+  if (!name) {
+    showError('Please enter a valid transaction name.');
+    return;
+  }
+
+  if (isNaN(amtValue) || amtValue <= 0) {
+    showError('Please enter a valid positive amount.');
+    return;
+  }
+
+  const finalAmount = type === 'expense' ? -Math.abs(amtValue) : Math.abs(amtValue);
+
+  const newTransaction = {
+    id: String(Date.now()),
+    name,
+    category,
+    date: getTodayISO(),
+    amount: finalAmount,
+    type
+  };
+
+  transactions.unshift(newTransaction);
+  saveToStorage();
+  renderTransactions();
+  updateTotals();
+
+  // Reset inputs
+  textInput.value = '';
+  amountInput.value = '';
+}
+
+/* Remove Transaction */
+function removeTransaction(id) {
+  transactions = transactions.filter(t => t.id !== id);
+  saveToStorage();
+  renderTransactions();
+  updateTotals();
+}
+
+/* Toggle Income / Expense type */
+toggleBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    toggleBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    typeInput.value = btn.getAttribute('data-type');
+  });
+});
+
+/* Show Error */
+function showError(msg) {
+  errorMessage.textContent = msg;
+  errorMessage.style.display = 'block';
+  setTimeout(() => {
+    errorMessage.style.display = 'none';
+  }, 3000);
+}
+
+/* Export CSV */
+function exportToCSV() {
+  if (transactions.length === 0) {
+    showError('No transactions to export.');
+    return;
+  }
+
+  const headers = ['Transaction', 'Category', 'Date', 'Amount', 'Type'];
+  const rows = transactions.map(t => [
+    `"${t.name.replace(/"/g, '""')}"`,
+    `"${t.category}"`,
+    t.date,
+    t.amount,
+    t.type
+  ]);
+
+  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `Expense_Report_${getTodayISO()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/* Init */
+function init() {
+  renderTransactions();
+  updateTotals();
+}
+
+form.addEventListener('submit', addTransaction);
+exportBtn.addEventListener('click', exportToCSV);
+
+window.removeTransaction = removeTransaction;
+
+init();

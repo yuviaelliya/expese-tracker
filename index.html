@@ -4,133 +4,98 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Expense Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="container">
-    <header class="app-header">
-      <h1>Expense Tracker</h1>
-      <p class="subtitle">Track income & expenses — simple, fast, and local</p>
+  <div class="app-container">
+    <header class="header-banner">
+      <div class="header-left">
+        <div class="tag">WEB APPLICATION DEVELOPMENT • MINI PROJECT</div>
+        <h1>Expense Tracker</h1>
+        <p class="subtitle">Track income & expenses — simple, fast, and local</p>
+      </div>
+      <div class="header-right">
+        <div class="student-name">AELLIYA YUVRAJ HIRAJI</div>
+        <div class="enrollment-no">Enrollment No: 240160116150</div>
+      </div>
     </header>
-
-    <!-- Left Column -->
-    <div class="left-column">
-      <!-- Balance -->
-      <section class="card balance-card">
-        <div class="balance-top">
-          <div>
-            <h2>Your Balance</h2>
-            <h3 id="balance">₹0.00</h3>
-          </div>
-          <div class="actions">
-            <button id="export-btn" class="small-btn">Export CSV</button>
-            <button id="reset-btn" class="small-btn ghost">Reset All</button>
-          </div>
-        </div>
-
-        <div class="summary-row">
-          <div class="summary-item">
-            <h4>Income</h4>
-            <p id="income-amount" class="money plus">+₹0.00</p>
-          </div>
-          <div class="summary-item">
-            <h4>Expense</h4>
-            <p id="expense-amount" class="money minus">-₹0.00</p>
-          </div>
-        </div>
-      </section>
-      <section class="card history-card">
-        <div class="filters">
-          <div class="filter-col">
-            <label for="filter-category">Category</label>
-            <select id="filter-category">
-              <option value="all">All</option>
-              <option value="Salary">Salary</option>
-              <option value="Groceries">Groceries</option>
-              <option value="Transport">Transport</option>
-              <option value="Entertainment">Entertainment</option>
-              <option value="Bills">Bills</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div class="filter-col">
-            <label>Date Range</label>
-            <div class="date-range">
-              <input type="date" id="start-date" />
-              <span class="to">to</span>
-              <input type="date" id="end-date" />
+    <main class="main-content">
+      <div class="left-column">
+        <section class="card balance-card">
+          <div class="balance-label">YOUR BALANCE</div>
+          <div class="balance-amount" id="balance">₹18,450.00</div>
+          <div class="summary-row">
+            <div class="summary-col">
+              <div class="label">Income</div>
+              <div class="value income" id="income-amount">+₹25,000.00</div>
+            </div>
+            <div class="summary-col">
+              <div class="label">Expense</div>
+              <div class="value expense" id="expense-amount">–₹6,550.00</div>
             </div>
           </div>
-          <div class="filter-actions">
-            <button id="apply-filter" class="small-btn">Apply</button>
-            <button id="clear-filter" class="small-btn ghost">Clear</button>
+        </section>
+        <section class="card history-card">
+          <div class="card-header">
+            <h2>Transaction History</h2>
+            <button id="export-btn" class="export-btn">Export CSV</button>
           </div>
-        </div>
-        <h3 id="history-title" class="history-title" style="display:none;">Transaction History</h3>
-        <div class="transaction-list-wrapper">
-          <ul id="transaction-list" class="list" aria-live="polite"></ul>
-        </div>
-        <p id="no-trans-placeholder" class="muted" style="display:none;">No transactions yet — add one below.</p>
-      </section>
-      <section class="card summary-card">
-        <h3>Monthly Summary</h3>
-        <div id="monthly-summary" class="monthly-summary"></div>
-      </section>
-    </div>
-    <div class="right-column">
-      <section class="card form-card">
-        <h3>Add New Transaction</h3>
-
-        <form id="transaction-form" class="form-grid" autocomplete="off">
-          <div class="form-control">
-            <label for="text">Transaction Name</label>
-            <input type="text" id="text" placeholder="e.g., Salary, Groceries" />
+          <div class="table-responsive">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>TRANSACTION</th>
+                  <th>CATEGORY</th>
+                  <th>DATE</th>
+                  <th class="text-right">AMOUNT</th>
+                </tr>
+              </thead>
+              <tbody id="transaction-list">
+              </tbody>
+            </table>
           </div>
-
-          <div class="form-control">
-            <label for="amount">Amount</label>
-            <input type="number" id="amount" placeholder="e.g., 1200 (positive numbers only)" />
-          </div>
-
-          <div class="form-control">
-            <label for="date">Date</label>
-            <input type="date" id="date" />
-          </div>
-
-          <div class="form-control">
-            <label for="category">Category</label>
-            <select id="category">
-              <option value="Salary">Salary</option>
-              <option value="Groceries">Groceries</option>
-              <option value="Transport">Transport</option>
-              <option value="Entertainment">Entertainment</option>
-              <option value="Bills">Bills</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div class="form-control radio-control">
-            <label>Type</label>
-            <div class="radio-row">
-              <label><input type="radio" name="type" value="income" checked /> Income</label>
-              <label><input type="radio" name="type" value="expense" /> Expense</label>
+        </section>
+      </div>
+      <div class="right-column">
+        <section class="card form-card">
+          <h2>Add New Transaction</h2>
+          <form id="transaction-form" autocomplete="off">
+            <div class="form-group">
+              <label for="text">Transaction Name</label>
+              <input type="text" id="text" value="Coffee & Snacks" placeholder="e.g., Coffee & Snacks" required />
             </div>
-          </div>
-
-          <div class="form-control fullwidth">
-            <button class="btn" type="submit">Add Transaction</button>
-          </div>
-
-          <p id="error-message" class="error-message" aria-live="assertive" style="display:none;"></p>
-        </form>
-      </section>
-    </div>
-
-    <footer class="footer">
-      <p>Built with passion and simplicity</p>
-    </footer>
-  </main>
-
+            <div class="form-group">
+              <label for="amount">Amount</label>
+              <input type="number" id="amount" value="180" placeholder="180" step="any" required />
+            </div>
+            <div class="form-group">
+              <label for="category">Category</label>
+              <select id="category">
+                <option value="Groceries" selected>Groceries</option>
+                <option value="Salary">Salary</option>
+                <option value="Transport">Transport</option>
+                <option value="Bills">Bills</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <div class="type-toggle-group">
+                <button type="button" class="toggle-btn" data-type="income">Income</button>
+                <button type="button" class="toggle-btn active" data-type="expense">Expense</button>
+              </div>
+              <input type="hidden" id="transaction-type" value="expense" />
+            </div>
+            <button type="submit" class="submit-btn">Add Transaction</button>
+            <p id="error-message" class="error-message" style="display:none;"></p>
+          </form>
+        </section>
+      </div>
+    </main>
+  </div>
   <script src="script.js"></script>
 </body>
 </html>
